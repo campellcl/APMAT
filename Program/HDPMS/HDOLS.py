@@ -33,22 +33,27 @@ def main(input_data_dir, model_storage_dir):
             or model_test_data_fname not in os.listdir(input_data_dir):
         print("Model stored in HikerData\DistancePrediction.csv not found! Generating new model...")
         # Create OLS Regression model post outlier removal:
-        ols_model = smf.ols(formula='np.log(MPD) ~ LOCDIR + HID + 1', data=df_train).fit()
+        ols_model = smf.ols(formula='MPD ~ LOCDIR + HID + 1', data=df_train).fit()
         print(ols_model.params)
         print(ols_model.summary())
         y_pred = ols_model.predict(df_test)
-        y_pred = np.exp(y_pred)
+        # y_pred = np.exp(y_pred)
         # Add a column to the test data frame for the MPD predicted by the model:
         df_test = df_test.copy()
         df_test['MPD_PRED'] = y_pred
-        df_test.to_csv("df_test.csv")
-        df_train = df_train.copy()
-        df_train['MPD_PRED'] = np.exp(ols_model.predict(df_train))
-        df_test.to_csv("df_train.csv")
+        df_test.to_csv(input_data_dir + "\df_test.csv")
+        # df_train = df_train.copy()
+        # df_train['MPD_PRED'] = np.exp(ols_model.predict(df_train))
+        df_test.to_csv(input_data_dir + "\df_train.csv")
+        # Evaluate model accuracy using Root Mean Squared Error (RMSE):
+        root_mean_squared_error = rmse(y_pred, df_test['MPD'])
+        print("Model RMSE (Miles-Per-Day): %d" % root_mean_squared_error)
     else:
         df_test = pd.read_csv(input_data_dir + "\df_test.csv", index_col=0)
         df_train = pd.read_csv(input_data_dir + "\df_train.csv", index_col=0)
-
+        y_pred = df_test['MPD_PRED'].values
+        root_mean_squared_error = rmse(y_pred, df_test['MPD'])
+        print("Model RMSE (Miles-Per-Day): %f" % root_mean_squared_error)
         x_bin_edges = np.arange(0, 50, 1)
         y_bin_edges = np.arange(0, 25, 1)
         plt.hist2d(x=df_test.MPD, y=df_test.MPD_PRED, bins=[x_bin_edges, y_bin_edges], hold=True)
@@ -63,9 +68,7 @@ def main(input_data_dir, model_storage_dir):
         print("pred_reg_y_min: %d" % pred_regression_y_min)
         plt.plot([min(df_test.MPD), max(df_test.MPD)], [pred_regression_y_min, pred_regression_y_max], c='red', linewidth=2)
         plt.show()
-        # Evaluate model accuracy using Root Mean Squared Error (RMSE):
-        #root_mean_squared_error = rmse(y_pred, df_test['MPD'])
-        #print("Model RMSE (Miles-Per-Day): %d" % root_mean_squared_error)
+
 
 if __name__ == '__main__':
     hiker_journal_entry_csv_path = os.path.abspath(os.path.join(
